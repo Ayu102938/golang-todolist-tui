@@ -1,0 +1,20 @@
+[
+  {
+    "title": "New my task",
+    "completed": true,
+    "priority": 0,
+    "due_date": "0001-01-01T00:00:00Z"
+  },
+  {
+    "title": "t2",
+    "completed": true,
+    "priority": 2,
+    "due_date": "0001-01-01T00:00:00Z"
+  },
+  {
+    "title": "t3",
+    "completed": true,
+    "priority": 0,
+    "due_date": "0001-01-01T00:00:00Z"
+  }
+]
