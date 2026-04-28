@@ -116,10 +116,11 @@ func (m model) View() string {
 	if m.mode == addMode || m.mode == editMode || m.mode == categoryAddMode {
 		return "\n  " + m.input.Placeholder + "\n" + m.input.View() + "\n\n  enter: 確定 • esc: キャンセル"
 	}
-	tabs := ""
+	var tabViews []string
 	for i, cat := range m.categories {
-		if i == m.activeTab { tabs += activeTabStyle.Render(cat) } else { tabs += tabStyle.Render(cat) }
+		if i == m.activeTab { tabViews = append(tabViews, activeTabStyle.Render(cat)) } else { tabViews = append(tabViews, tabStyle.Render(cat)) }
 	}
+	tabs := lipgloss.JoinHorizontal(lipgloss.Top, tabViews...)
 	s := titleStyle.Render("TODO リスト") + "\n" + tabs + "\n\n"
 	
 	pStr := []string{"Low", "Mid", "High"}

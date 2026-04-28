@@ -17,7 +17,12 @@ type Todo struct {
 }
 
 type mode int
-const ( viewMode mode = iota; addMode; editMode )
+const ( 
+    viewMode mode = iota
+    addMode
+    editMode
+    categoryAddMode // ここが不足していました
+)
 
 type model struct {
 	todos       []Todo
