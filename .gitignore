@@ -1,0 +1,9 @@
+todos.json
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+my-tui-app

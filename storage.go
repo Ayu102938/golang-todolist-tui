@@ -1,11 +1,20 @@
-﻿package main
+package main
 
 import (
 	"encoding/json"
 	"os"
+	"path/filepath"
 )
 
-const filename = "todos.json"
+var filename = defaultFilePath()
+
+func defaultFilePath() string {
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		configDir = "."
+	}
+	return filepath.Join(configDir, "my-tui-app", "todos.json")
+}
 
 func loadTodos() ([]Todo, error) {
 	file, err := os.ReadFile(filename)
@@ -23,6 +32,10 @@ func loadTodos() ([]Todo, error) {
 func saveTodos(todos []Todo) error {
 	data, err := json.MarshalIndent(todos, "", "  ")
 	if err != nil {
+		return err
+	}
+	dir := filepath.Dir(filename)
+	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err
 	}
 	return os.WriteFile(filename, data, 0644)
