@@ -289,7 +289,7 @@ func (m model) View() string {
 			count++
 		}
 	}
-	s += "\n h/l:タブ • n:カテゴリ追加 • x:カテゴリ削除 • a:追加 • j/k:移動 • e:編集 • p:優先度 • s:ソート • f:フィルター • d:削除 • q:終了"
+	s += "\n" + lipgloss.NewStyle().Width(contentWidth).Render(" h/l:タブ • n:カテゴリ追加 • x:カテゴリ削除 • a:追加 • j/k:移動 • e:編集 • p:優先度 • s:ソート • f:フィルター • d:削除 • q:終了")
 	return lipgloss.NewStyle().Padding(1, 2).Render(s)
 }
 
