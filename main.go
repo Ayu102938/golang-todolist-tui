@@ -16,11 +16,11 @@ func initialModel(storage Storage) model {
 		log.Printf("warning: failed to load todos: %v", err)
 		todos = []Todo{}
 	}
-	categories := []string{"Home"}
-	catMap := map[string]bool{"Home": true}
+	categories := []string{defaultCategory}
+	catMap := map[string]bool{defaultCategory: true}
 	for i := range todos {
 		if todos[i].Category == "" {
-			todos[i].Category = "Home"
+			todos[i].Category = defaultCategory
 		}
 		if !catMap[todos[i].Category] {
 			catMap[todos[i].Category] = true
@@ -61,16 +61,10 @@ func (m model) handleInputKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			switch m.mode {
 			case addMode:
 				m.todos = append(m.todos, Todo{Title: val, DueDate: time.Now().AddDate(0, 0, 1), Category: m.categories[m.activeTab]})
-				if err := m.storage.Save(m.todos); err != nil {
-					log.Printf("error: failed to save todos: %v", err)
-				}
 			case editMode:
 				idx := m.getFilteredIndex(m.cursor)
 				if idx >= 0 {
 					m.todos[idx].Title = val
-					if err := m.storage.Save(m.todos); err != nil {
-						log.Printf("error: failed to save todos: %v", err)
-					}
 				}
 			case categoryAddMode:
 				m.categories = append(m.categories, val)
@@ -105,9 +99,7 @@ func (m model) handleCategoryDeleteKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.todos = remaining
 			m.activeTab = 0
 			m.cursor = 0
-			if err := m.storage.Save(m.todos); err != nil {
-				log.Printf("error: failed to save todos: %v", err)
-			}
+
 		}
 		m.mode = viewMode
 	case "esc":
@@ -119,6 +111,9 @@ func (m model) handleCategoryDeleteKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m model) handleViewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "ctrl+c", "q":
+		if err := m.storage.Save(m.todos); err != nil {
+			log.Printf("error: failed to save todos: %v", err)
+		}
 		return m, tea.Quit
 	case "h":
 		if m.activeTab > 0 {
@@ -143,9 +138,6 @@ func (m model) handleViewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			idx := m.getFilteredIndex(m.cursor)
 			if idx >= 0 {
 				m.todos[idx].Completed = !m.todos[idx].Completed
-				if err := m.storage.Save(m.todos); err != nil {
-					log.Printf("error: failed to save todos: %v", err)
-				}
 			}
 		}
 	case "a":
@@ -174,9 +166,6 @@ func (m model) handleViewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			idx := m.getFilteredIndex(m.cursor)
 			if idx >= 0 {
 				m.todos[idx].Priority = (m.todos[idx].Priority + 1) % 3
-				if err := m.storage.Save(m.todos); err != nil {
-					log.Printf("error: failed to save todos: %v", err)
-				}
 			}
 		}
 	case "f":
@@ -194,9 +183,6 @@ func (m model) handleViewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.todos = append(m.todos[:idx], m.todos[idx+1:]...)
 				if m.cursor >= m.filteredCount() && m.cursor > 0 {
 					m.cursor--
-				}
-				if err := m.storage.Save(m.todos); err != nil {
-					log.Printf("error: failed to save todos: %v", err)
 				}
 			}
 		}

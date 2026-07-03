@@ -58,24 +58,39 @@ type model struct {
 
 const maxInputLen = 100
 
+const defaultCategory = "Home"
+
 func (m *model) sortTodos() {
 	if m.sortField == sortNone {
 		return
 	}
 	activeCat := m.categories[m.activeTab]
-	sort.SliceStable(m.todos, func(i, j int) bool {
-		if m.todos[i].Category != activeCat || m.todos[j].Category != activeCat {
-			return false
+
+	var activeItems []Todo
+	for _, t := range m.todos {
+		if t.Category == activeCat {
+			activeItems = append(activeItems, t)
 		}
+	}
+
+	sort.SliceStable(activeItems, func(i, j int) bool {
 		switch m.sortField {
 		case sortPriority:
-			return m.todos[i].Priority > m.todos[j].Priority
+			return activeItems[i].Priority > activeItems[j].Priority
 		case sortDueDate:
-			return m.todos[i].DueDate.Before(m.todos[j].DueDate)
+			return activeItems[i].DueDate.Before(activeItems[j].DueDate)
 		case sortName:
-			return m.todos[i].Title < m.todos[j].Title
+			return activeItems[i].Title < activeItems[j].Title
 		default:
 			return false
 		}
 	})
+
+	idx := 0
+	for i := range m.todos {
+		if m.todos[i].Category == activeCat {
+			m.todos[i] = activeItems[idx]
+			idx++
+		}
+	}
 }

@@ -53,7 +53,7 @@ func (m model) View() string {
 	if m.mode == categoryDeleteMode {
 		cat := m.categories[m.activeTab]
 		if m.activeTab == 0 {
-			return "\n  Home カテゴリは削除できません\n\n  enter: 戻る"
+			return "\n  " + defaultCategory + " カテゴリは削除できません\n\n  enter: 戻る"
 		}
 		return "\n  \"" + cat + "\" カテゴリとそのタスクを削除しますか？\n\n  enter: 確定 • esc: キャンセル"
 	}
@@ -95,7 +95,7 @@ func (m model) View() string {
 	if availableHeight < 1 {
 		availableHeight = 1
 	}
-	count := 0
+		count := 0
 	for _, todo := range m.todos {
 		if count >= availableHeight {
 			s += "  ...\n"
@@ -123,6 +123,13 @@ func (m model) View() string {
 			}
 			s += line + "\n"
 			count++
+		}
+	}
+	if count == 0 {
+		if catTotal == 0 {
+			s += "  タスクがありません\n"
+		} else {
+			s += "  表示できるタスクがありません\n"
 		}
 	}
 	s += "\n" + lipgloss.NewStyle().Width(contentWidth).Render(" h/l:タブ • n:カテゴリ追加 • x:カテゴリ削除 • a:追加 • j/k:移動 • e:編集 • p:優先度 • s:ソート • f:フィルター • d:削除 • q:終了")

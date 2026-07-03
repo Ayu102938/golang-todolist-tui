@@ -22,12 +22,14 @@ A functional Go-based CLI application with a Bubble Tea interface to manage task
 
 **Result**: Build + 29 tests passing. File structure: `main.go` (entry + Update), `model.go` (types + sort), `view.go` (UI), `storage.go` (interface + FileStorage).
 
-## Phase 2: Bug Fixes & Stability (Medium Priority)
+## Phase 2: Bug Fixes & Stability (Medium Priority) ✅ 2026-07-03
 
-- [ ] **2-1: Fix sortTodos()** — Comparator returns `false` for non-active category items, violating `sort.SliceStable` contract.
-- [ ] **2-2: Empty-state messages** — Show "No tasks" when a category is empty instead of blank screen.
-- [ ] **2-3: Configurable default category** — Replace hardcoded "Home" with configurable value.
-- [ ] **2-4: Debounce saveTodos()** — Reduce disk writes from every keypress to batched or debounced.
+- [x] **2-1: Fix sortTodos()** — Extract active-category items, sort separately, then place back. Preserves non-active item positions.
+- [x] **2-2: Empty-state messages** — Show "タスクがありません" when category empty, "表示できるタスクがありません" when all filtered out.
+- [x] **2-3: Configurable default category** — Replace hardcoded "Home" with `defaultCategory` constant in model.go.
+- [x] **2-4: Debounce saveTodos()** — Save only on quit (`q` / `ctrl+c`). Removed per-mutation saves.
+
+**Result**: Build + 29 tests passing. `sortTodo()` now uses proper strict weak ordering via extraction. Empty categories show helpful messages. Save-on-quit reduces disk I/O.
 
 ## Phase 3: Features (Medium-Low Priority)
 
