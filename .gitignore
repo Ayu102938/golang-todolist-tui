@@ -7,3 +7,4 @@ todos.json
 *.test
 *.out
 my-tui-app
+.opencode/
