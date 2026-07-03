@@ -8,3 +8,5 @@ todos.json
 *.out
 my-tui-app
 .opencode/
+plan.md
+opencode.json
