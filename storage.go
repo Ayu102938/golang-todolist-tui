@@ -6,9 +6,20 @@ import (
 	"path/filepath"
 )
 
-var filename = defaultFilePath()
+type Storage interface {
+	Load() ([]Todo, error)
+	Save(todos []Todo) error
+}
 
-func defaultFilePath() string {
+type FileStorage struct {
+	path string
+}
+
+func NewFileStorage(path string) *FileStorage {
+	return &FileStorage{path: path}
+}
+
+func DefaultFilePath() string {
 	configDir, err := os.UserConfigDir()
 	if err != nil {
 		configDir = "."
@@ -16,8 +27,8 @@ func defaultFilePath() string {
 	return filepath.Join(configDir, "my-tui-app", "todos.json")
 }
 
-func loadTodos() ([]Todo, error) {
-	file, err := os.ReadFile(filename)
+func (fs *FileStorage) Load() ([]Todo, error) {
+	file, err := os.ReadFile(fs.path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return []Todo{}, nil
@@ -29,14 +40,14 @@ func loadTodos() ([]Todo, error) {
 	return todos, err
 }
 
-func saveTodos(todos []Todo) error {
+func (fs *FileStorage) Save(todos []Todo) error {
 	data, err := json.MarshalIndent(todos, "", "  ")
 	if err != nil {
 		return err
 	}
-	dir := filepath.Dir(filename)
+	dir := filepath.Dir(fs.path)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err
 	}
-	return os.WriteFile(filename, data, 0644)
+	return os.WriteFile(fs.path, data, 0644)
 }

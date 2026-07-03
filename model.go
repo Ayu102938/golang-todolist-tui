@@ -53,6 +53,7 @@ type model struct {
 	width       int
 	height      int
 	sortField   sortField
+	storage     Storage
 }
 
 const maxInputLen = 100
