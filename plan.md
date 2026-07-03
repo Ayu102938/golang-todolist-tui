@@ -1,45 +1,47 @@
-# Improvement Plan - Todo TUI App
+# 改善計画 - Todo TUI アプリ
 
-## Current Status
-A functional Go-based CLI application with a Bubble Tea interface to manage tasks. It supports categories, priority levels, sorting, and basic filtering of completed items.
+## 現状
+Bubble Tea を使用した Go 製の機能的な CLI タスク管理アプリ。カテゴリ、優先度、ソート、完了/未完了フィルターに対応。
 
-## Identified Issues & Opportunities
-1. **Dual codebase**: Incomplete refactoring to `pkg/` + `cmd/` with import path mismatch — dead code that cannot build.
-2. **Monolithic Update()**: 120-line method with deeply nested switch handling 5 modes and 15+ keybindings.
-3. **No separation of concerns**: UI rendering, state management, and persistence all in `main` package.
-4. **Global mutable state**: `var filename` in storage.go break parallel testability.
-5. **No abstraction over persistence**: `loadTodos()` / `saveTodos()` are concrete functions, not interfaces.
-6. **Missing empty-state UX**: No "No tasks found" messages for empty categories.
+## 特定された課題
+1. **二重コードベース**: `pkg/` + `cmd/` への不完全なリファクタリングの残骸。import path 不一致によりビルド不可。
+2. **肥大化した Update()**: 120行のメソッドに5つのモードと15以上のキーバインドが深くネスト。
+3. **関心の分離不足**: UI描画・状態管理・永続化がすべて `main` パッケージに混在。
+4. **グローバルな可変状態**: `storage.go` の `var filename` が並列テストの妨げに。
+5. **永続化の抽象化不足**: `loadTodos()` / `saveTodos()` が具象関数で、インターフェース化されていない。
+6. **空状態の UX 欠如**: カテゴリが空のときにメッセージが表示されない。
 
 ---
 
-## Phase 1: Architecture & Refactoring (High Priority) ✅ 2026-07-03
+## Phase 1: アーキテクチャ整理（優先度：高） ✅ 2026-07-03
 
-- [x] **1-1: Resolve dual codebase** — Delete dead `pkg/` and `cmd/` directories. All active code is in the root package.
-- [x] **1-2: Interface-ize storage** — Create `Storage` interface, inject via constructor. Eliminate package-level `var filename`.
-- [x] **1-3: Split Update()** — Extract mode-specific handler methods (`handleInputKey`, `handleCategoryDeleteKey`, `handleViewKey`).
-- [x] **1-4: Separate View()** — Move UI rendering to `view.go`.
+- [x] **1-1: 二重コードベースの解消** — 使用されていない `pkg/` と `cmd/` を削除。全コードをルートパッケージに統一。
+- [x] **1-2: ストレージのインターフェース化** — `Storage` インターフェースを作成し、コンストラクタ注入に変更。パッケージ変数 `var filename` を排除。
+- [x] **1-3: Update() の分割** — モード別ハンドラ (`handleInputKey`, `handleCategoryDeleteKey`, `handleViewKey`) に分離。
+- [x] **1-4: View() の分離** — UI 描画を `view.go` に切り出し。
 
-**Result**: Build + 29 tests passing. File structure: `main.go` (entry + Update), `model.go` (types + sort), `view.go` (UI), `storage.go` (interface + FileStorage).
+**結果**: ビルド + 29 テスト合格。ファイル構成: `main.go` (エントリ + Update), `model.go` (型 + ソート), `view.go` (UI), `storage.go` (インターフェース + FileStorage)。
 
-## Phase 2: Bug Fixes & Stability (Medium Priority) ✅ 2026-07-03
+## Phase 2: バグ修正・安定性（優先度：中） ✅ 2026-07-03
 
-- [x] **2-1: Fix sortTodos()** — Extract active-category items, sort separately, then place back. Preserves non-active item positions.
-- [x] **2-2: Empty-state messages** — Show "タスクがありません" when category empty, "表示できるタスクがありません" when all filtered out.
-- [x] **2-3: Configurable default category** — Replace hardcoded "Home" with `defaultCategory` constant in model.go.
-- [x] **2-4: Debounce saveTodos()** — Save only on quit (`q` / `ctrl+c`). Removed per-mutation saves.
+- [x] **2-1: sortTodos() の修正** — アクティブカテゴリのアイテムを抽出→ソート→再配置。非アクティブ項目の位置を保持。
+- [x] **2-2: 空状態メッセージ** — カテゴリが空のとき「タスクがありません」、フィルターで全除外時に「表示できるタスクがありません」を表示。
+- [x] **2-3: デフォルトカテゴリの設定化** — ハードコードされていた `"Home"` を `defaultCategory` 定数に置換（model.go）。
+- [x] **2-4: saveTodos() の間引き** — 終了時（`q` / `ctrl+c`）のみ保存。各操作ごとの保存を削除。
 
-**Result**: Build + 29 tests passing. `sortTodo()` now uses proper strict weak ordering via extraction. Empty categories show helpful messages. Save-on-quit reduces disk I/O.
+**結果**: ビルド + 29 テスト合格。`sortTodos()` は抽出方式で適切な弱順序を保証。空カテゴリにヘルプメッセージ表示。終了時保存でディスク I/O を削減。
 
-## Phase 3: Features (Medium-Low Priority)
+## Phase 3: 機能追加（優先度：中〜低） ✅ 2026-07-03
 
-- [ ] **3-1: Custom due date input** — Allow users to set arbitrary dates instead of always "tomorrow".
-- [ ] **3-2: Text search** — Filter by title substring match in addition to completed/uncompleted.
-- [ ] **3-3: Task description field** — Add optional notes/body to `Todo` struct.
-- [ ] **3-4: Undo** — Basic undo for delete and edit operations.
+- [x] **3-1: 任意の期限日入力** — addMode でタイトル入力後、日付入力モード (YYYY-MM-DD) に遷移。空欄なら明日。
+- [x] **3-2: テキスト検索** — `/` キーで検索モード。タイトルの部分一致（大文字小文字無視）でフィルター。
+- [x] **3-3: タスク詳細/メモ** — `Todo` に `Description` フィールドを追加。`D` キーで編集。詳細ありのタスクに `…` 表示。
+- [x] **3-4: Undo 機能** — 各 mutation 前にスナップショットを保存。`u` キーで最後の操作を取り消し。
 
-## Phase 4: Polish (Low Priority)
+**結果**: ビルド + 29 テスト合格。二段階入力で任意の期限日を設定可能に。部分一致検索でタスクの絞り込みが可能。説明フィールドと undo による編集の安全性を追加。
 
-- [ ] **4-1: Config file support** — Load settings (default category, colors, keybindings) from `~/.config`.
-- [ ] **4-2: Color theme** — User-customizable color schemes.
-- [ ] **4-3: i18n groundwork** — Externalize Japanese strings for future multi-language support.
+## Phase 4: 仕上げ（優先度：低）
+
+- [ ] **4-1: 設定ファイル対応** — デフォルトカテゴリ・色・キーバインドを `~/.config` から読み込み。
+- [ ] **4-2: カラーテーマ** — ユーザーが配色をカスタマイズ可能に。
+- [ ] **4-3: i18n 基盤** — 日本語文字列を外部化し、多言語対応の土台を作成。

@@ -57,7 +57,7 @@ func (m model) View() string {
 		}
 		return "\n  \"" + cat + "\" カテゴリとそのタスクを削除しますか？\n\n  enter: 確定 • esc: キャンセル"
 	}
-	if m.mode == addMode || m.mode == editMode || m.mode == categoryAddMode {
+	if m.mode == addMode || m.mode == addDateMode || m.mode == editMode || m.mode == categoryAddMode || m.mode == searchMode || m.mode == descMode {
 		return "\n  " + m.input.Placeholder + "\n" + m.input.View() + "\n\n  enter: 確定 • esc: キャンセル"
 	}
 	var tabViews []string
@@ -112,10 +112,14 @@ func (m model) View() string {
 			}
 			dueStr := todo.DueDate.Format("01/02")
 			title := todo.Title
-			if len(title) > contentWidth-25 {
-				title = title[:contentWidth-25] + "..."
+			if len(title) > contentWidth-28 {
+				title = title[:contentWidth-28] + "..."
 			}
-			line := fmt.Sprintf("%s [%s] [%-4s] %-10s %s", cursor, checked, pStr[todo.Priority], dueStr, title)
+			descMarker := ""
+			if todo.Description != "" {
+				descMarker = "…"
+			}
+			line := fmt.Sprintf("%s [%s] [%-4s] %-10s %s%s", cursor, checked, pStr[todo.Priority], dueStr, title, descMarker)
 			if todo.Completed {
 				line = completedStyle.Render(line)
 			} else if todo.DueDate.Before(now) {
@@ -132,6 +136,6 @@ func (m model) View() string {
 			s += "  表示できるタスクがありません\n"
 		}
 	}
-	s += "\n" + lipgloss.NewStyle().Width(contentWidth).Render(" h/l:タブ • n:カテゴリ追加 • x:カテゴリ削除 • a:追加 • j/k:移動 • e:編集 • p:優先度 • s:ソート • f:フィルター • d:削除 • q:終了")
+	s += "\n" + lipgloss.NewStyle().Width(contentWidth).Render(" h/l:タブ • n:カテゴリ追加 • x:カテゴリ削除 • a:追加 • j/k:移動 • e:編集 • D:詳細 • p:優先度 • s:ソート • f:フィルター • /:検索 • d:削除 • u:元に戻す • q:終了")
 	return lipgloss.NewStyle().Padding(1, 2).Render(s)
 }

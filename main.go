@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/bubbles/textinput"
@@ -42,7 +43,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		return m, nil
 	case tea.KeyMsg:
-		if m.mode == addMode || m.mode == editMode || m.mode == categoryAddMode {
+		if m.mode == addMode || m.mode == addDateMode || m.mode == editMode || m.mode == categoryAddMode || m.mode == searchMode || m.mode == descMode {
 			return m.handleInputKey(msg)
 		}
 		if m.mode == categoryDeleteMode {
@@ -57,24 +58,61 @@ func (m model) handleInputKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "enter":
 		val := m.input.Value()
-		if val != "" {
-			switch m.mode {
-			case addMode:
-				m.todos = append(m.todos, Todo{Title: val, DueDate: time.Now().AddDate(0, 0, 1), Category: m.categories[m.activeTab]})
-			case editMode:
-				idx := m.getFilteredIndex(m.cursor)
-				if idx >= 0 {
-					m.todos[idx].Title = val
+		switch m.mode {
+		case addMode:
+			if val != "" {
+				m.pendingTitle = val
+				m.mode = addDateMode
+				m.input.Placeholder = "期限 YYYY-MM-DD (enter=明日)..."
+				m.input.SetValue("")
+			}
+		case addDateMode:
+			m.undoSnapshot()
+			if val != "" {
+				if dueDate, err := time.Parse("2006-01-02", val); err == nil {
+					m.todos = append(m.todos, Todo{Title: m.pendingTitle, DueDate: dueDate, Category: m.categories[m.activeTab]})
+				} else {
+					m.todos = append(m.todos, Todo{Title: m.pendingTitle, DueDate: time.Now().AddDate(0, 0, 1), Category: m.categories[m.activeTab]})
 				}
-			case categoryAddMode:
+			} else {
+				m.todos = append(m.todos, Todo{Title: m.pendingTitle, DueDate: time.Now().AddDate(0, 0, 1), Category: m.categories[m.activeTab]})
+			}
+			m.input.SetValue("")
+			m.mode = viewMode
+		case editMode:
+			idx := m.getFilteredIndex(m.cursor)
+			if idx >= 0 && val != "" {
+				m.undoSnapshot()
+				m.todos[idx].Title = val
+			}
+			m.input.SetValue("")
+			m.mode = viewMode
+		case categoryAddMode:
+			if val != "" {
 				m.categories = append(m.categories, val)
 				m.activeTab = len(m.categories) - 1
+			}
+			m.input.SetValue("")
+			m.mode = viewMode
+		case searchMode:
+			m.searchQuery = val
+			m.cursor = 0
+			m.mode = viewMode
+		case descMode:
+			idx := m.getFilteredIndex(m.cursor)
+			if idx >= 0 {
+				m.undoSnapshot()
+				m.todos[idx].Description = val
 			}
 			m.input.SetValue("")
 			m.mode = viewMode
 		}
 	case "esc":
 		m.input.SetValue("")
+		if m.mode == searchMode {
+			m.searchQuery = ""
+			m.cursor = 0
+		}
 		m.mode = viewMode
 	default:
 		var cmd tea.Cmd
@@ -88,6 +126,7 @@ func (m model) handleCategoryDeleteKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "enter":
 		if m.activeTab > 0 {
+			m.undoSnapshot()
 			removed := m.categories[m.activeTab]
 			m.categories = append(m.categories[:m.activeTab], m.categories[m.activeTab+1:]...)
 			var remaining []Todo
@@ -137,6 +176,7 @@ func (m model) handleViewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.filteredCount() > 0 {
 			idx := m.getFilteredIndex(m.cursor)
 			if idx >= 0 {
+				m.undoSnapshot()
 				m.todos[idx].Completed = !m.todos[idx].Completed
 			}
 		}
@@ -161,10 +201,21 @@ func (m model) handleViewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.input.Focus()
 			}
 		}
+	case "D":
+		if m.filteredCount() > 0 {
+			idx := m.getFilteredIndex(m.cursor)
+			if idx >= 0 {
+				m.mode = descMode
+				m.input.Placeholder = "詳細..."
+				m.input.SetValue(m.todos[idx].Description)
+				m.input.Focus()
+			}
+		}
 	case "p":
 		if m.filteredCount() > 0 {
 			idx := m.getFilteredIndex(m.cursor)
 			if idx >= 0 {
+				m.undoSnapshot()
 				m.todos[idx].Priority = (m.todos[idx].Priority + 1) % 3
 			}
 		}
@@ -176,14 +227,29 @@ func (m model) handleViewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.cursor = 0
 	case "x":
 		m.mode = categoryDeleteMode
+	case "/":
+		m.mode = searchMode
+		m.input.Placeholder = "検索..."
+		m.input.SetValue(m.searchQuery)
+		m.input.Focus()
+		return m, textinput.Blink
 	case "d":
 		if m.filteredCount() > 0 {
 			idx := m.getFilteredIndex(m.cursor)
 			if idx >= 0 {
+				m.undoSnapshot()
 				m.todos = append(m.todos[:idx], m.todos[idx+1:]...)
 				if m.cursor >= m.filteredCount() && m.cursor > 0 {
 					m.cursor--
 				}
+			}
+		}
+	case "u":
+		if len(m.lastTodos) > 0 {
+			m.todos = m.lastTodos
+			m.lastTodos = nil
+			if m.cursor >= m.filteredCount() && m.cursor > 0 {
+				m.cursor = m.filteredCount() - 1
 			}
 		}
 	}
@@ -193,7 +259,9 @@ func (m model) handleViewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m model) filteredCount() int {
 	c := 0
 	for _, t := range m.todos {
-		if t.Category == m.categories[m.activeTab] && (!m.filterDone || !t.Completed) { c++ }
+		if t.Category == m.categories[m.activeTab] && (!m.filterDone || !t.Completed) && (m.searchQuery == "" || containsIgnoreCase(t.Title, m.searchQuery)) {
+			c++
+		}
 	}
 	return c
 }
@@ -201,7 +269,7 @@ func (m model) filteredCount() int {
 func (m model) getFilteredIndex(target int) int {
 	c := 0
 	for i, t := range m.todos {
-		if t.Category == m.categories[m.activeTab] && (!m.filterDone || !t.Completed) {
+		if t.Category == m.categories[m.activeTab] && (!m.filterDone || !t.Completed) && (m.searchQuery == "" || containsIgnoreCase(t.Title, m.searchQuery)) {
 			if c == target { return i }
 			c++
 		}
@@ -214,4 +282,13 @@ func main() {
 	if _, err := tea.NewProgram(initialModel(storage), tea.WithAltScreen()).Run(); err != nil {
 		fmt.Printf("Error: %v", err); os.Exit(1)
 	}
+}
+
+func containsIgnoreCase(s, substr string) bool {
+	return strings.Contains(strings.ToLower(s), strings.ToLower(substr))
+}
+
+func (m *model) undoSnapshot() {
+	m.lastTodos = make([]Todo, len(m.todos))
+	copy(m.lastTodos, m.todos)
 }

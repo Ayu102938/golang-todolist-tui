@@ -25,11 +25,12 @@ const (
 )
 
 type Todo struct {
-	Title     string    `json:"title"`
-	Completed bool      `json:"completed"`
-	Priority  Priority  `json:"priority"`
-	DueDate   time.Time `json:"due_date"`
-	Category  string    `json:"category"`
+	Title       string    `json:"title"`
+	Completed   bool      `json:"completed"`
+	Priority    Priority  `json:"priority"`
+	DueDate     time.Time `json:"due_date"`
+	Category    string    `json:"category"`
+	Description string    `json:"description,omitempty"`
 }
 
 type mode int
@@ -37,23 +38,29 @@ type mode int
 const (
 	viewMode mode = iota
 	addMode
+	addDateMode
 	editMode
 	categoryAddMode
 	categoryDeleteMode
+	searchMode
+	descMode
 )
 
 type model struct {
-	todos       []Todo
-	categories  []string
-	activeTab   int
-	cursor      int
-	input       textinput.Model
-	mode        mode
-	filterDone  bool
-	width       int
-	height      int
-	sortField   sortField
-	storage     Storage
+	todos        []Todo
+	categories   []string
+	activeTab    int
+	cursor       int
+	input        textinput.Model
+	mode         mode
+	filterDone   bool
+	width        int
+	height       int
+	sortField    sortField
+	storage      Storage
+	pendingTitle string
+	searchQuery  string
+	lastTodos    []Todo
 }
 
 const maxInputLen = 100
