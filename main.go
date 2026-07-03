@@ -11,17 +11,18 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-func initialModel(storage Storage) model {
+func initialModel(cfg Config, storage Storage) model {
 	todos, err := storage.Load()
 	if err != nil {
 		log.Printf("warning: failed to load todos: %v", err)
 		todos = []Todo{}
 	}
-	categories := []string{defaultCategory}
-	catMap := map[string]bool{defaultCategory: true}
+	defaultCat := cfg.DefaultCategory
+	categories := []string{defaultCat}
+	catMap := map[string]bool{defaultCat: true}
 	for i := range todos {
 		if todos[i].Category == "" {
-			todos[i].Category = defaultCategory
+			todos[i].Category = defaultCat
 		}
 		if !catMap[todos[i].Category] {
 			catMap[todos[i].Category] = true
@@ -29,9 +30,10 @@ func initialModel(storage Storage) model {
 		}
 	}
 	ti := textinput.New()
-	ti.Placeholder = "タスク名..."
+	ti.Placeholder = msg.TaskPlaceholder
 	ti.CharLimit = maxInputLen
-	return model{todos: todos, categories: categories, activeTab: 0, input: ti, mode: viewMode, storage: storage}
+	theme := resolveTheme(cfg)
+	return model{todos: todos, categories: categories, activeTab: 0, input: ti, mode: viewMode, storage: storage, config: cfg, ui: buildStyles(theme)}
 }
 
 func (m model) Init() tea.Cmd { return nil }
@@ -54,8 +56,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m model) handleInputKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
+func (m model) handleInputKey(keymsg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch keymsg.String() {
 	case "enter":
 		val := m.input.Value()
 		switch m.mode {
@@ -63,7 +65,7 @@ func (m model) handleInputKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if val != "" {
 				m.pendingTitle = val
 				m.mode = addDateMode
-				m.input.Placeholder = "期限 YYYY-MM-DD (enter=明日)..."
+				m.input.Placeholder = msg.DatePlaceholder
 				m.input.SetValue("")
 			}
 		case addDateMode:
@@ -116,14 +118,14 @@ func (m model) handleInputKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.mode = viewMode
 	default:
 		var cmd tea.Cmd
-		m.input, cmd = m.input.Update(msg)
+		m.input, cmd = m.input.Update(keymsg)
 		return m, cmd
 	}
 	return m, nil
 }
 
-func (m model) handleCategoryDeleteKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
+func (m model) handleCategoryDeleteKey(keymsg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch keymsg.String() {
 	case "enter":
 		if m.activeTab > 0 {
 			m.undoSnapshot()
@@ -147,8 +149,8 @@ func (m model) handleCategoryDeleteKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m model) handleViewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
+func (m model) handleViewKey(keymsg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch keymsg.String() {
 	case "ctrl+c", "q":
 		if err := m.storage.Save(m.todos); err != nil {
 			log.Printf("error: failed to save todos: %v", err)
@@ -182,13 +184,13 @@ func (m model) handleViewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	case "a":
 		m.mode = addMode
-		m.input.Placeholder = "タスク名..."
+		m.input.Placeholder = msg.TaskPlaceholder
 		m.input.SetValue("")
 		m.input.Focus()
 		return m, textinput.Blink
 	case "n":
 		m.mode = categoryAddMode
-		m.input.Placeholder = "カテゴリ名..."
+		m.input.Placeholder = msg.CategoryPlaceholder
 		m.input.SetValue("")
 		m.input.Focus()
 		return m, textinput.Blink
@@ -206,7 +208,7 @@ func (m model) handleViewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			idx := m.getFilteredIndex(m.cursor)
 			if idx >= 0 {
 				m.mode = descMode
-				m.input.Placeholder = "詳細..."
+				m.input.Placeholder = msg.DescPlaceholder
 				m.input.SetValue(m.todos[idx].Description)
 				m.input.Focus()
 			}
@@ -229,7 +231,7 @@ func (m model) handleViewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.mode = categoryDeleteMode
 	case "/":
 		m.mode = searchMode
-		m.input.Placeholder = "検索..."
+		m.input.Placeholder = msg.SearchPlaceholder
 		m.input.SetValue(m.searchQuery)
 		m.input.Focus()
 		return m, textinput.Blink
@@ -278,8 +280,9 @@ func (m model) getFilteredIndex(target int) int {
 }
 
 func main() {
+	cfg, _ := LoadConfig(configFilePath())
 	storage := NewFileStorage(DefaultFilePath())
-	if _, err := tea.NewProgram(initialModel(storage), tea.WithAltScreen()).Run(); err != nil {
+	if _, err := tea.NewProgram(initialModel(cfg, storage), tea.WithAltScreen()).Run(); err != nil {
 		fmt.Printf("Error: %v", err); os.Exit(1)
 	}
 }

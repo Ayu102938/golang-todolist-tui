@@ -393,17 +393,18 @@ func TestSortLabel(t *testing.T) {
 }
 
 func TestRenderProgressBar(t *testing.T) {
-	bar := renderProgressBar(10, 5, 10)
+	m := model{ui: buildStyles(defaultTheme)}
+	bar := renderProgressBar(m, 10, 5, 10)
 	if bar == "" {
 		t.Error("progress bar should not be empty")
 	}
 
-	barEmpty := renderProgressBar(0, 0, 10)
+	barEmpty := renderProgressBar(m, 0, 0, 10)
 	if barEmpty == "" {
 		t.Error("progress bar for zero total should not be empty")
 	}
 
-	barFull := renderProgressBar(10, 10, 10)
+	barFull := renderProgressBar(m, 10, 10, 10)
 	if barFull == "" {
 		t.Error("progress bar for full should not be empty")
 	}

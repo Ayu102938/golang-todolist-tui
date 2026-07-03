@@ -61,11 +61,11 @@ type model struct {
 	pendingTitle string
 	searchQuery  string
 	lastTodos    []Todo
+	config       Config
+	ui           styles
 }
 
 const maxInputLen = 100
-
-const defaultCategory = "Home"
 
 func (m *model) sortTodos() {
 	if m.sortField == sortNone {

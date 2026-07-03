@@ -8,16 +8,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-var (
-	titleStyle      = lipgloss.NewStyle().Background(lipgloss.Color("62")).Foreground(lipgloss.Color("230")).Padding(0, 1).Bold(true)
-	tabStyle        = lipgloss.NewStyle().Padding(0, 1).Foreground(lipgloss.Color("240"))
-	activeTabStyle  = lipgloss.NewStyle().Padding(0, 1).Foreground(lipgloss.Color("255")).Bold(true).Border(lipgloss.NormalBorder(), false, false, true, false)
-	overdueStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("196"))
-	completedStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
-	progressBgStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
-	progressFgStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("114"))
-)
-
 func maxContentWidth(m model) int {
 	if m.width <= 0 {
 		return 80
@@ -25,27 +15,27 @@ func maxContentWidth(m model) int {
 	return m.width - 4
 }
 
-func renderProgressBar(total, done int, width int) string {
+func renderProgressBar(m model, total, done, width int) string {
 	if total == 0 {
-		return progressBgStyle.Render(strings.Repeat("░", width))
+		return m.ui.progressBg.Render(strings.Repeat("░", width))
 	}
 	filled := int(float64(done) / float64(total) * float64(width))
 	if filled > width {
 		filled = width
 	}
-	return progressFgStyle.Render(strings.Repeat("█", filled)) + progressBgStyle.Render(strings.Repeat("░", width-filled))
+	return m.ui.progressFg.Render(strings.Repeat("█", filled)) + m.ui.progressBg.Render(strings.Repeat("░", width-filled))
 }
 
 func sortLabel(sf sortField) string {
 	switch sf {
 	case sortPriority:
-		return "優先度"
+		return msg.SortPriority
 	case sortDueDate:
-		return "期限"
+		return msg.SortDueDate
 	case sortName:
-		return "名前"
+		return msg.SortName
 	default:
-		return "なし"
+		return msg.SortNone
 	}
 }
 
@@ -53,23 +43,23 @@ func (m model) View() string {
 	if m.mode == categoryDeleteMode {
 		cat := m.categories[m.activeTab]
 		if m.activeTab == 0 {
-			return "\n  " + defaultCategory + " カテゴリは削除できません\n\n  enter: 戻る"
+			return "\n  " + m.config.DefaultCategory + " " + msg.CannotDeleteHome + "\n\n  enter: " + msg.Return
 		}
-		return "\n  \"" + cat + "\" カテゴリとそのタスクを削除しますか？\n\n  enter: 確定 • esc: キャンセル"
+		return "\n  \"" + cat + "\" " + msg.DeleteConfirm + "\n\n  enter: " + msg.Confirm + " • esc: " + msg.Cancel
 	}
 	if m.mode == addMode || m.mode == addDateMode || m.mode == editMode || m.mode == categoryAddMode || m.mode == searchMode || m.mode == descMode {
-		return "\n  " + m.input.Placeholder + "\n" + m.input.View() + "\n\n  enter: 確定 • esc: キャンセル"
+		return "\n  " + m.input.Placeholder + "\n" + m.input.View() + "\n\n  enter: " + msg.Confirm + " • esc: " + msg.Cancel
 	}
 	var tabViews []string
 	for i, cat := range m.categories {
 		if i == m.activeTab {
-			tabViews = append(tabViews, activeTabStyle.Render(cat))
+			tabViews = append(tabViews, m.ui.activeTab.Render(cat))
 		} else {
-			tabViews = append(tabViews, tabStyle.Render(cat))
+			tabViews = append(tabViews, m.ui.tab.Render(cat))
 		}
 	}
 	tabs := lipgloss.JoinHorizontal(lipgloss.Top, tabViews...)
-	s := titleStyle.Render("TODO リスト") + "\n" + tabs + "\n"
+	s := m.ui.title.Render(msg.Title) + "\n" + tabs + "\n"
 
 	activeCat := m.categories[m.activeTab]
 	var catTotal, catDone int
@@ -85,7 +75,7 @@ func (m model) View() string {
 	if barWidth < 5 {
 		barWidth = 5
 	}
-	bar := renderProgressBar(catTotal, catDone, barWidth)
+	bar := renderProgressBar(m, catTotal, catDone, barWidth)
 	s += fmt.Sprintf(" %d/%d %s\n\n", catDone, catTotal, bar)
 
 	contentWidth := maxContentWidth(m)
@@ -95,7 +85,7 @@ func (m model) View() string {
 	if availableHeight < 1 {
 		availableHeight = 1
 	}
-		count := 0
+	count := 0
 	for _, todo := range m.todos {
 		if count >= availableHeight {
 			s += "  ...\n"
@@ -121,9 +111,9 @@ func (m model) View() string {
 			}
 			line := fmt.Sprintf("%s [%s] [%-4s] %-10s %s%s", cursor, checked, pStr[todo.Priority], dueStr, title, descMarker)
 			if todo.Completed {
-				line = completedStyle.Render(line)
+				line = m.ui.completed.Render(line)
 			} else if todo.DueDate.Before(now) {
-				line = overdueStyle.Render(line)
+				line = m.ui.overdue.Render(line)
 			}
 			s += line + "\n"
 			count++
@@ -131,11 +121,11 @@ func (m model) View() string {
 	}
 	if count == 0 {
 		if catTotal == 0 {
-			s += "  タスクがありません\n"
+			s += "  " + msg.NoTasks + "\n"
 		} else {
-			s += "  表示できるタスクがありません\n"
+			s += "  " + msg.NoVisibleTasks + "\n"
 		}
 	}
-	s += "\n" + lipgloss.NewStyle().Width(contentWidth).Render(" h/l:タブ • n:カテゴリ追加 • x:カテゴリ削除 • a:追加 • j/k:移動 • e:編集 • i:詳細 • p:優先度 • s:ソート • f:フィルター • /:検索 • d:削除 • u:元に戻す • q:終了")
+	s += "\n" + lipgloss.NewStyle().Width(contentWidth).Render(msg.Help)
 	return lipgloss.NewStyle().Padding(1, 2).Render(s)
 }
