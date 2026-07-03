@@ -201,7 +201,7 @@ func (m model) handleViewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.input.Focus()
 			}
 		}
-	case "D":
+	case "i":
 		if m.filteredCount() > 0 {
 			idx := m.getFilteredIndex(m.cursor)
 			if idx >= 0 {

@@ -136,6 +136,6 @@ func (m model) View() string {
 			s += "  表示できるタスクがありません\n"
 		}
 	}
-	s += "\n" + lipgloss.NewStyle().Width(contentWidth).Render(" h/l:タブ • n:カテゴリ追加 • x:カテゴリ削除 • a:追加 • j/k:移動 • e:編集 • D:詳細 • p:優先度 • s:ソート • f:フィルター • /:検索 • d:削除 • u:元に戻す • q:終了")
+	s += "\n" + lipgloss.NewStyle().Width(contentWidth).Render(" h/l:タブ • n:カテゴリ追加 • x:カテゴリ削除 • a:追加 • j/k:移動 • e:編集 • i:詳細 • p:優先度 • s:ソート • f:フィルター • /:検索 • d:削除 • u:元に戻す • q:終了")
 	return lipgloss.NewStyle().Padding(1, 2).Render(s)
 }
